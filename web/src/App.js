@@ -10,7 +10,7 @@ function App() {
     <div className="main-content">
       <Navbar />
       {/* <button className="random-btn button">Get Random Rule</button> */}
-      <div>
+      <div className="list-container">
         <List />
       </div>
       <Modal />

@@ -5,10 +5,23 @@
     flex-direction: column;
     height: 100vh;
     justify-content: space-between;
+    overflow: scroll;
+}
+
+.navbar.navbar {
+    position: sticky;
+}
+
+.list-container {
+    margin-bottom: 250px;
 }
 
 .create-box {
-    background-color: hsl(171, 100%, 41%)
+    background-color: hsl(171, 100%, 41%);
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
 }
 
 .create-input {
