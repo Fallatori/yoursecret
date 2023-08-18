@@ -14,10 +14,11 @@ app.get("/api/secrets", async (req, res) => {
   try {
     const rawData = await readFile(DB_URI, { encoding: "utf-8" });
     const data = rawData.split("\n").map((rawItem) => {
-      const [id, text] = rawItem.split(":");
+      const [id, text, used] = rawItem.split(":");
       return {
         id,
         text,
+        used: Boolean(used),
       };
     });
     res.send({ data });
@@ -35,14 +36,43 @@ app.get("/api/secrets/random", async (req, res) => {
     return res.status(404).send("No data");
   }
   const data = rawData.split("\n").map((rawItem) => {
-    const [id, text] = rawItem.split(":");
+    const [id, text, used] = rawItem.split(":");
     return {
       id,
       text,
+      used,
     };
   });
-  const random = data[Math.floor(Math.random() * data.length)];
-  res.send(random);
+
+  const unusedDataItems = data.filter((item) => !item.used);
+
+  console.log("unused length is ", unusedDataItems.length);
+
+  const randomIndex = Math.floor(Math.random() * unusedDataItems.length);
+
+  console.log("random index is ", randomIndex);
+
+  const random = unusedDataItems[randomIndex];
+
+  const shouldSetAllUsedItemsToUnused = unusedDataItems.length <= 1;
+
+  //set random selection to status "used"
+  const newDBData = data
+    .map(({ id, text, used }) => {
+      if (id === random.id) {
+        //if the item in the database has the same id as the request asked to update
+        return `${id}:${text}:${shouldSetAllUsedItemsToUnused ? "" : "x"}`; //return a new item with updated data
+      }
+      return `${id}:${text}:${shouldSetAllUsedItemsToUnused ? "" : used}`; //return an identical item
+    })
+    .join("\n"); //make back into a string with newlines as separators
+
+  writeFile(DB_URI, newDBData); //update database
+
+  res.send({
+    id: random.id,
+    text: random.text,
+  });
 });
 
 app.post("/api/secrets", async (req, res) => {
@@ -52,7 +82,7 @@ app.post("/api/secrets", async (req, res) => {
   const addNewline = rawData.length !== 0;
 
   const id = v4();
-  appendFile(DB_URI, `${addNewline ? "\n" : ""}${id}:${req.body.data}`);
+  appendFile(DB_URI, `${addNewline ? "\n" : ""}${id}:${req.body.data}:`);
   res.send(`New item created with data ${req.body.data}`);
 });
 
@@ -65,9 +95,10 @@ app.put("/api/secrets/:id", async (req, res) => {
       //for every item:
       const values = item.split(":"); //split item in the middle.
       const id = values[0]; //id is whatever comes before the colon
+      const used = values[2];
       if (id === req.params.id) {
         //if the item in the database has the same id as the request asked to update
-        return `${id}:${req.body.data}`; //return a new item with updated data
+        return `${id}:${req.body.data}:${used}`; //return a new item with updated data
       }
       return item; //return an identical item
     })
